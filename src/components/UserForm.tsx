@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from "uuid"; // Import UUID generator
 
 const UserForm = () => {
   const [formData, setFormData] = useState({
-    id: "",
     name: "",
     address: "",
     email: "",
@@ -19,16 +18,6 @@ const UserForm = () => {
   });
 
   const [isDirty, setIsDirty] = useState(false); // Track unsaved changes
-
-  // Load saved data from localStorage on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem("userData");
-    if (savedData) {
-      setFormData(JSON.parse(savedData));
-    } else {
-      setFormData((prev) => ({ ...prev, id: uuidv4() })); // Generate User ID if no saved data
-    }
-  }, []);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +53,7 @@ const UserForm = () => {
     setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
   };
 
-  // Validate entire form
+  // Validate entire form before saving
   const validateForm = () => {
     let isValid = true;
     Object.keys(formData).forEach((key) => {
@@ -77,20 +66,45 @@ const UserForm = () => {
     return isValid;
   };
 
-  // Save data to localStorage
+  // Save multiple user entries to localStorage
   const handleSave = () => {
     if (!validateForm()) {
       alert("Please fix errors before saving.");
       return;
     }
-    localStorage.setItem("userData", JSON.stringify(formData));
+
+    const savedData = localStorage.getItem("userData");
+    let parsedData = [];
+
+    try {
+      parsedData = savedData ? JSON.parse(savedData) : [];
+      if (!Array.isArray(parsedData)) {
+        parsedData = []; // Reset if data is not an array
+      }
+    } catch (error) {
+      console.error("Error parsing localStorage data:", error);
+      parsedData = []; // Reset in case of an error
+    }
+
+    // Create new user entry with a unique ID
+    const newUserData = { id: uuidv4(), ...formData };
+
+    // Append new user entry
+    parsedData.push(newUserData);
+
+    // Save updated list back to localStorage
+    localStorage.setItem("userData", JSON.stringify(parsedData));
+
     setIsDirty(false);
     alert("User Data Saved!");
+
+    // Reset form after saving
+    setFormData({ name: "", address: "", email: "", phone: "" });
   };
 
   // Reset form
   const handleReset = () => {
-    setFormData({ id: uuidv4(), name: "", address: "", email: "", phone: "" });
+    setFormData({ name: "", address: "", email: "", phone: "" });
     setErrors({ name: "", address: "", email: "", phone: "" });
     setIsDirty(false);
   };
@@ -125,7 +139,7 @@ const UserForm = () => {
         backgroundColor: "#f9f9f9",
       }}
     >
-      <Typography variant="h6">User ID: {formData.id}</Typography>
+      <Typography variant="h6">User Information</Typography>
 
       <TextField
         label="Name"
