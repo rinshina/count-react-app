@@ -1,0 +1,34 @@
+/* Ensure full width and height of the viewport */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  /* Prevents extra scrolling */
+}
+
+/* Make sure the root container and app cover the full screen */
+#root,
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure body and all elements don't cause extra margin */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Debugging: Add a background color to visualize full coverage */
+#root {
+  background-color: lightgray;
+  /* Remove later, just for testing */
+}
