@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TextField, Button, Box, Typography } from "@mui/material";
-import { v4 as uuidv4 } from "uuid"; // Import UUID generator
 
-const UserForm = () => {
+interface UserFormProps {
+  setIsLoggedIn: (status: boolean) => void;
+}
+
+const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
+  const [isSignUp, setIsSignUp] = useState<boolean>(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({
@@ -15,19 +21,16 @@ const UserForm = () => {
     address: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
   });
 
-  const [isDirty, setIsDirty] = useState(false); // Track unsaved changes
-
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    validateField(name, value); // Validate field on change
-    setIsDirty(true);
+    validateField(name, value);
   };
 
-  // Validate a single field
   const validateField = (name: string, value: string) => {
     let error = "";
     switch (name) {
@@ -47,13 +50,19 @@ const UserForm = () => {
       case "phone":
         error = /^[0-9]{10}$/.test(value) ? "" : "Phone must be 10 digits";
         break;
+      case "password":
+        error =
+          value.length < 6 ? "Password must be at least 6 characters" : "";
+        break;
+      case "confirmPassword":
+        error = value !== formData.password ? "Passwords do not match" : "";
+        break;
       default:
         break;
     }
     setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
   };
 
-  // Validate entire form before saving
   const validateForm = () => {
     let isValid = true;
     Object.keys(formData).forEach((key) => {
@@ -66,63 +75,49 @@ const UserForm = () => {
     return isValid;
   };
 
-  // Save multiple user entries to localStorage
   const handleSave = () => {
     if (!validateForm()) {
       alert("Please fix errors before saving.");
       return;
     }
 
-    const savedData = localStorage.getItem("userData");
-    let parsedData = [];
+    setIsLoggedIn(true);
+    alert(isSignUp ? "Signed Up!" : "Signed In!");
 
-    try {
-      parsedData = savedData ? JSON.parse(savedData) : [];
-      if (!Array.isArray(parsedData)) {
-        parsedData = []; // Reset if data is not an array
-      }
-    } catch (error) {
-      console.error("Error parsing localStorage data:", error);
-      parsedData = []; // Reset in case of an error
-    }
-
-    // Create new user entry with a unique ID
-    const newUserData = { id: uuidv4(), ...formData };
-
-    // Append new user entry
-    parsedData.push(newUserData);
-
-    // Save updated list back to localStorage
-    localStorage.setItem("userData", JSON.stringify(parsedData));
-
-    setIsDirty(false);
-    alert("User Data Saved!");
-
-    // Reset form after saving
-    setFormData({ name: "", address: "", email: "", phone: "" });
+    // Clear form after submission
+    setFormData({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
   };
 
-  // Reset form
-  const handleReset = () => {
-    setFormData({ name: "", address: "", email: "", phone: "" });
-    setErrors({ name: "", address: "", email: "", phone: "" });
-    setIsDirty(false);
+  const handleSignUpClick = () => {
+    setIsSignUp(true);
+    setFormData({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
   };
 
-  // Prevent leaving the page if there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isDirty) {
-        event.preventDefault();
-        event.returnValue =
-          "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isDirty]);
+  const handleSignInClick = () => {
+    setIsSignUp(false);
+    setFormData({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
+  };
 
   return (
     <Box
@@ -139,63 +134,133 @@ const UserForm = () => {
         backgroundColor: "#f9f9f9",
       }}
     >
-      <Typography variant="h6">User Information</Typography>
+      {/* Toggle between SignIn and SignUp */}
+      {!isSignUp ? (
+        <>
+          <Typography variant="h6">Sign In</Typography>
+          <TextField
+            label="Email or Phone"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={!!errors.email}
+            helperText={errors.email}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={!!errors.password}
+            helperText={errors.password}
+            fullWidth
+            required
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSave}
+            fullWidth
+          >
+            Sign In
+          </Button>
+          <Box sx={{ textAlign: "center", marginTop: "10px" }}>
+            <Typography variant="body2">OR</Typography>
+          </Box>
+          <Button variant="outlined" onClick={handleSignUpClick} fullWidth>
+            Sign Up
+          </Button>
+        </>
+      ) : (
+        // Sign Up Form
+        <>
+          <Typography variant="h6">Sign Up</Typography>
+          <TextField
+            label="Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            error={!!errors.name}
+            helperText={errors.name}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Address"
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            error={!!errors.address}
+            helperText={errors.address}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={!!errors.email}
+            helperText={errors.email}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Phone"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            error={!!errors.phone}
+            helperText={errors.phone}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={!!errors.password}
+            helperText={errors.password}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
+            fullWidth
+            required
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSave}
+            fullWidth
+          >
+            Sign Up
+          </Button>
+          <Box sx={{ textAlign: "center", marginTop: "10px" }}>
+            <Typography variant="body2">OR</Typography>
+          </Box>
+          <Button variant="outlined" onClick={handleSignInClick} fullWidth>
+            Sign In
+          </Button>
+        </>
+      )}
 
-      <TextField
-        label="Name"
-        name="name"
-        value={formData.name}
-        onChange={handleChange}
-        error={!!errors.name}
-        helperText={errors.name}
-        fullWidth
-      />
-      <TextField
-        label="Address"
-        name="address"
-        value={formData.address}
-        onChange={handleChange}
-        error={!!errors.address}
-        helperText={errors.address}
-        fullWidth
-      />
-      <TextField
-        label="Email"
-        name="email"
-        value={formData.email}
-        onChange={handleChange}
-        error={!!errors.email}
-        helperText={errors.email}
-        fullWidth
-      />
-      <TextField
-        label="Phone"
-        name="phone"
-        value={formData.phone}
-        onChange={handleChange}
-        error={!!errors.phone}
-        helperText={errors.phone}
-        fullWidth
-      />
-
-      <Box sx={{ display: "flex", gap: "10px" }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSave}
-          fullWidth
-        >
-          Save
-        </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleReset}
-          fullWidth
-        >
-          Reset
-        </Button>
-      </Box>
+      {/* Google Sign-In */}
+      <Button variant="contained" fullWidth sx={{ marginTop: "10px" }}>
+        {isSignUp ? "Sign Up with Google" : "Sign In with Google"}
+      </Button>
     </Box>
   );
 };
