@@ -24,7 +24,7 @@ const RichTextEditor = () => {
         Rich Text Editor
       </Heading>
       {/* Use Stack with spacing */}
-      <Stack spacing={4}>
+      <Stack>
         <ReactQuill theme="snow" value={content} onChange={setContent} />
         <Button colorScheme="blue" onClick={handleSave}>
           Save
