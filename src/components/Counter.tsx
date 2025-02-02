@@ -22,7 +22,7 @@ const Counter: React.FC = () => {
     <animated.div
       style={{
         ...bgColor,
-        height: "100vh",
+        height: "50vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
