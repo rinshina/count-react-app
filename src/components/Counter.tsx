@@ -34,7 +34,6 @@ const Counter = () => {
         height: "300px", // Increased height
         width: "100%", // Slightly wider for better layout
         borderRadius: "10px",
-        padding: "30px", // Increased padding for spacing
         boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
         textAlign: "center",
       }}
