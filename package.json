@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "start":"reun dev"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",

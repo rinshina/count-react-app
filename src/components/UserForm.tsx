@@ -117,7 +117,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
     setUsers(updatedUsers);
     localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-    alert("Sign-up successful!");
     setIsSignUp(false);
   };
 
@@ -174,7 +173,7 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
           display: "flex",
           flexDirection: "column",
           gap: "20px",
-          maxWidth: "400px",
+          // Width: "1000px",
           margin: "auto",
           padding: "20px",
           border: "1px solid #ddd",

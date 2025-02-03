@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import UserForm from "./components/UserForm";
 import Counter from "./components/Counter";
 import RichTextEditor from "./components/RichTextEditor";
-// import Chart from "./components/Chart";
 import Navbar from "./components/NavBar"; // Correctly import Navbar
+import UserProfileTrendChart from "./components/UserProfileTrendChart"; // Import the chart component
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -62,6 +62,11 @@ function App() {
 
           <Box gridColumn="2" gridRow="2">
             <RichTextEditor />
+          </Box>
+
+          {/* Display the UserProfileTrendChart */}
+          <Box gridColumn="1 / span 2" gridRow="3">
+            <UserProfileTrendChart /> {/* Add the chart */}
           </Box>
         </Box>
       )}
