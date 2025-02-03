@@ -10,9 +10,11 @@ const Auth = ({ setIsLoggedIn }: AuthProps) => {
     <Flex
       align="center"
       justify="center"
-      height="100vh"
+      minH="100vh" // Ensure it fully occupies the viewport
+      width="100vw"
       direction="column"
-      gap="20px"
+      bg="gray.100" // Optional background for contrast
+      p={4} // Padding to prevent touching edges
     >
       <UserForm setIsLoggedIn={setIsLoggedIn} />
     </Flex>

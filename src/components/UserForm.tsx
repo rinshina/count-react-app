@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { TextField, Button, Box, Typography } from "@mui/material";
+import { GoogleLogin } from "@react-oauth/google";
 
 interface User {
-  id: string;
   name: string;
   address: string;
   email: string;
@@ -16,6 +16,7 @@ interface UserFormProps {
 
 const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const [users, setUsers] = useState<User[]>([]); // Stores signed-up users
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -32,32 +33,21 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
     phone: "",
     password: "",
     confirmPassword: "",
-    login: "",
+    signIn: "",
   });
 
-  const [unsavedChanges, setUnsavedChanges] = useState(false);
-
-  // Save form data before exiting the page
   useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (unsavedChanges) {
-        event.preventDefault();
-        event.returnValue = "You have unsaved changes!";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [unsavedChanges]);
+    // Load users from localStorage
+    const storedUsers = JSON.parse(localStorage.getItem("users") || "[]");
+    setUsers(storedUsers);
+  }, []);
 
-  // Handle form field changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    setUnsavedChanges(true);
     validateField(name, value);
   };
 
-  // Validate individual fields
   const validateField = (name: string, value: string) => {
     let error = "";
     switch (name) {
@@ -66,7 +56,12 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
           value.trim().length < 3 ? "Name must be at least 3 characters" : "";
         break;
       case "email":
-        error = /\S+@\S+\.\S+/.test(value) ? "" : "Invalid email format";
+        error =
+          value.trim() === ""
+            ? "Email is required"
+            : /\S+@\S+\.\S+/.test(value)
+            ? ""
+            : "Invalid email format";
         break;
       case "address":
         error =
@@ -75,7 +70,12 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
             : "";
         break;
       case "phone":
-        error = /^[0-9]{10}$/.test(value) ? "" : "Phone must be 10 digits";
+        error =
+          value.trim() === ""
+            ? "Phone number is required"
+            : /^[0-9]{10}$/.test(value)
+            ? ""
+            : "Phone must be 10 digits";
         break;
       case "password":
         error =
@@ -90,89 +90,103 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
     setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
   };
 
-  // Validate entire form
-  const validateForm = () => {
-    let isValid = true;
-    Object.keys(formData).forEach((key) => {
-      validateField(key, formData[key as keyof typeof formData]);
-      if (errors[key as keyof typeof errors]) {
-        isValid = false;
-      }
-    });
-    return isValid;
-  };
-
-  // Generate a unique user ID
-  const generateUserId = () => `user_${Date.now()}`;
-
-  // Save user data to local storage on sign-up
   const handleSignUp = () => {
-    if (!validateForm()) {
-      alert("Please fix errors before signing up.");
+    if (Object.values(errors).some((err) => err !== "")) {
+      alert("Please fix errors before submitting.");
       return;
     }
 
-    const existingUsers: User[] = JSON.parse(
-      localStorage.getItem("users") || "[]"
-    );
+    const { name, address, email, phone, password } = formData;
 
-    // Check if the email or phone is already used
-    const userExists = existingUsers.some(
-      (user) => user.email === formData.email || user.phone === formData.phone
-    );
-    if (userExists) {
-      alert("Email or phone number already registered!");
+    // Check if email or phone is already used
+    if (users.some((user) => user.email === email || user.phone === phone)) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        email: "This email or phone number is already registered",
+      }));
       return;
     }
 
-    // Save new user
-    const newUser: User = {
-      id: generateUserId(),
-      name: formData.name,
-      address: formData.address,
-      email: formData.email,
-      phone: formData.phone,
-      password: formData.password,
-    };
+    const newUser: User = { name, address, email, phone, password };
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers); // Store user data
 
-    localStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
+    // Save updated users to localStorage
+    localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-    alert("Signed up successfully!");
-    setUnsavedChanges(false);
-    setIsSignUp(false); // Redirect to Sign In
+    alert("Sign-up successful! You can now sign in.");
+    setIsSignUp(false);
+    setFormData({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
+    setErrors({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      signIn: "",
+    });
   };
 
-  // Handle user login
   const handleSignIn = () => {
-    const existingUsers: User[] = JSON.parse(
-      localStorage.getItem("users") || "[]"
+    const { email, phone, password } = formData;
+    const existingUser = users.find(
+      (user) => user.email === email || user.phone === phone
     );
 
-    const user = existingUsers.find(
-      (u) => u.email === formData.email || u.phone === formData.phone
-    );
-
-    if (!user) {
-      setErrors({ ...errors, login: "Not a registered user. Please sign up!" });
+    if (!existingUser) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        email: "Not a registered user",
+      }));
       return;
     }
 
-    if (user.password !== formData.password) {
-      setErrors({ ...errors, login: "Incorrect password!" });
+    if (existingUser.password !== password) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        password: "Incorrect password",
+      }));
       return;
     }
 
-    alert("Signed in successfully!");
     setIsLoggedIn(true);
-    setUnsavedChanges(false);
+    alert("Signed in successfully!");
+
+    setFormData({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    setErrors({
+      name: "",
+      address: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      signIn: "",
+    });
   };
 
   return (
     <Box
-      component="form"
       sx={{
         display: "flex",
         flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         gap: "15px",
         maxWidth: "400px",
         margin: "auto",
@@ -182,46 +196,17 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
         backgroundColor: "#f9f9f9",
       }}
     >
-      {isSignUp ? (
+      <Typography variant="h6">{isSignUp ? "Sign Up" : "Sign In"}</Typography>
+
+      {!isSignUp ? (
         <>
-          <Typography variant="h6">Sign Up</Typography>
           <TextField
-            label="Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            error={!!errors.name}
-            helperText={errors.name}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Address"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            error={!!errors.address}
-            helperText={errors.address}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Email"
+            label="Email or Phone"
             name="email"
             value={formData.email}
             onChange={handleChange}
             error={!!errors.email}
             helperText={errors.email}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            error={!!errors.phone}
-            helperText={errors.phone}
             fullWidth
             required
           />
@@ -236,40 +221,63 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
             fullWidth
             required
           />
-          <TextField
-            label="Confirm Password"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword}
-            fullWidth
-            required
-          />
           <Button
             variant="contained"
             color="primary"
-            onClick={handleSignUp}
-            fullWidth
-          >
-            Sign Up
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => setIsSignUp(false)}
+            onClick={handleSignIn}
             fullWidth
           >
             Sign In
           </Button>
+
+          {/* Google Sign-In Centered */}
+          <Box
+            sx={{ display: "flex", justifyContent: "center", width: "100%" }}
+          >
+            <GoogleLogin
+              onSuccess={() => setIsLoggedIn(true)}
+              onError={() => console.log("Login Failed")}
+            />
+          </Box>
+
+          <Button
+            variant="outlined"
+            onClick={() => setIsSignUp(true)}
+            fullWidth
+          >
+            Sign Up
+          </Button>
         </>
       ) : (
         <>
-          <Typography variant="h6">Sign In</Typography>
           <TextField
-            label="Email or Phone"
+            label="Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Address"
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Email"
             name="email"
             value={formData.email}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            label="Phone"
+            name="phone"
+            value={formData.phone}
             onChange={handleChange}
             fullWidth
             required
@@ -283,18 +291,20 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
             fullWidth
             required
           />
-          <Typography color="error">{errors.login}</Typography>
+          <TextField
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+
           <Button
             variant="contained"
             color="primary"
-            onClick={handleSignIn}
-            fullWidth
-          >
-            Sign In
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => setIsSignUp(true)}
+            onClick={handleSignUp}
             fullWidth
           >
             Sign Up
