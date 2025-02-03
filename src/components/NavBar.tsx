@@ -1,36 +1,35 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
-const Navbar: React.FC = () => {
-  const [userName, setUserName] = useState<string>("");
-  const [signInCount, setSignInCount] = useState<number>(0);
+// Define the props type for Navbar
+interface NavbarProps {
+  userName: string;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ userName }) => {
+  // const [signInCount, setSignInCount] = useState<number>(0);
 
   useEffect(() => {
-    // Retrieve the user data from localStorage
-    const storedUser = JSON.parse(localStorage.getItem("googleUser") || "{}");
-    if (storedUser) {
-      setUserName(storedUser.name);
-    }
-
     // Retrieve the sign-in history and count the number of sign-ins
-    const signInHistory = JSON.parse(
-      localStorage.getItem("signInHistory") || "[]"
-    );
-    setSignInCount(signInHistory.length);
-  }, []);
+    //const signInHistory = JSON.parse(
+    //localStorage.getItem("signInHistory") || "[]"
+    //);
+    //setSignInCount(signInHistory.length); // Set the sign-in count
+  }, []); // Only run on component mount
 
   return (
     <Box
       sx={{
         display: "flex",
-        justifyContent: "space-between",
+        justifyContent: "space-between", // Make sure the content is spread across the navbar
         alignItems: "center",
         backgroundColor: "#3f51b5",
         padding: "10px 20px",
         color: "white",
       }}
     >
+      {/* Left section */}
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <IconButton
           sx={{
@@ -40,14 +39,19 @@ const Navbar: React.FC = () => {
         >
           <AccountCircleIcon />
         </IconButton>
+        {/* Display userName or "Guest" if not found */}
         <Typography variant="h6">{userName || "Guest"}</Typography>
       </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center" }}>
-        <Typography sx={{ marginRight: "10px" }}>
-          Sign-ins: {signInCount}
-        </Typography>
-      </Box>
+      {/* Right section */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center", // Center this section
+          alignItems: "center",
+          flex: 1, // Allow the content to grow and fill the available space
+        }}
+      ></Box>
     </Box>
   );
 };

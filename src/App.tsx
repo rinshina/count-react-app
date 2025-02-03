@@ -1,21 +1,39 @@
-import { ChakraProvider, Box, defaultSystem } from "@chakra-ui/react";
-import { useState } from "react";
+import { ChakraProvider, Box, Button, defaultSystem } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
 import UserForm from "./components/UserForm";
 import Counter from "./components/Counter";
 import RichTextEditor from "./components/RichTextEditor";
-import Chart from "./components/Chart";
-import Navbar from "./components/NavBar";
+// import Chart from "./components/Chart";
+import Navbar from "./components/NavBar"; // Correctly import Navbar
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    const email = localStorage.getItem("email"); // Retrieve the stored email
+    if (isLoggedIn && users.length && email) {
+      const currentUser = users.find(
+        (user: { email: string }) => user.email === email
+      ); // Find user by email
+      if (currentUser) {
+        setUserName(currentUser.name); // Set userName if found
+      }
+    }
+  }, [isLoggedIn]);
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserName(""); // Clear userName on logout
+    localStorage.removeItem("email"); // Remove the email from localStorage
+  };
 
   return (
     <ChakraProvider value={defaultSystem}>
       {!isLoggedIn ? (
-        // If not logged in, show the login form
         <UserForm setIsLoggedIn={setIsLoggedIn} />
       ) : (
-        // If logged in, show the dashboard layout
         <Box
           display="grid"
           gridTemplateColumns="1fr 1fr"
@@ -24,24 +42,26 @@ function App() {
           gap="10px"
           padding="10px"
         >
-          {/* NavBar Component - Top  */}
-          <Box gridColumn="1 / span 2" gridRow="1">
-            <Navbar />
+          {/* Navbar with userName */}
+          <Box
+            gridColumn="1 / span 2"
+            gridRow="1"
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Navbar userName={userName} /> {/* Pass userName to Navbar */}
+            <Button colorScheme="red" size="sm" onClick={handleLogout}>
+              Logout
+            </Button>
           </Box>
 
-          {/* Counter Component - Top Left */}
           <Box gridColumn="1" gridRow="2">
             <Counter />
           </Box>
 
-          {/* Rich Text Editor - Top Right */}
           <Box gridColumn="2" gridRow="2">
             <RichTextEditor />
-          </Box>
-
-          {/* Chart Component - Bottom Full Width */}
-          <Box gridColumn="1 / span 2" gridRow="3">
-            <Chart />
           </Box>
         </Box>
       )}

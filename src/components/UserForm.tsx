@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { TextField, Button, Box, Typography } from "@mui/material";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 interface User {
   name: string;
@@ -10,14 +11,27 @@ interface User {
   password: string;
 }
 
+interface GoogleTokenPayload {
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
 interface UserFormProps {
   setIsLoggedIn: (status: boolean) => void;
 }
 
 const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
-  const [users, setUsers] = useState<User[]>([]); // Stores signed-up users
-  const [formData, setFormData] = useState({
+  const [users, setUsers] = useState<User[]>([]);
+  const [formData, setFormData] = useState<{
+    name: string;
+    address: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+  }>({
     name: "",
     address: "",
     email: "",
@@ -26,7 +40,15 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
     confirmPassword: "",
   });
 
-  const [errors, setErrors] = useState({
+  const [errors, setErrors] = useState<{
+    name: string;
+    address: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+    signIn: string;
+  }>({
     name: "",
     address: "",
     email: "",
@@ -37,119 +59,15 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
   });
 
   useEffect(() => {
-    // Load users from localStorage
-    const storedUsers = JSON.parse(localStorage.getItem("users") || "[]");
+    const storedUsers: User[] = JSON.parse(
+      localStorage.getItem("users") || "[]"
+    );
     setUsers(storedUsers);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    validateField(name, value);
-  };
-
-  const validateField = (name: string, value: string) => {
-    let error = "";
-    switch (name) {
-      case "name":
-        error =
-          value.trim().length < 3 ? "Name must be at least 3 characters" : "";
-        break;
-      case "email":
-        error =
-          value.trim() === ""
-            ? "Email is required"
-            : /\S+@\S+\.\S+/.test(value)
-            ? ""
-            : "Invalid email format";
-        break;
-      case "address":
-        error =
-          value.trim().length < 5
-            ? "Address must be at least 5 characters"
-            : "";
-        break;
-      case "phone":
-        error =
-          value.trim() === ""
-            ? "Phone number is required"
-            : /^[0-9]{10}$/.test(value)
-            ? ""
-            : "Phone must be 10 digits";
-        break;
-      case "password":
-        error =
-          value.length < 6 ? "Password must be at least 6 characters" : "";
-        break;
-      case "confirmPassword":
-        error = value !== formData.password ? "Passwords do not match" : "";
-        break;
-      default:
-        break;
-    }
-    setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-  };
-
-  const validateForm = () => {
-    let isValid = true;
-    const newErrors = { ...errors };
-
-    Object.keys(formData).forEach((key) => {
-      const value = formData[key as keyof typeof formData];
-      validateField(key, value);
-      if (value.trim() === "" || newErrors[key as keyof typeof newErrors]) {
-        newErrors[key as keyof typeof newErrors] = "This field is required";
-        isValid = false;
-      }
-    });
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleSignUp = () => {
-    if (!validateForm()) {
-      alert("Please fix errors before submitting.");
-      return;
-    }
-
-    const { name, address, email, phone, password } = formData;
-
-    // Check if email or phone is already used
-    if (users.some((user) => user.email === email || user.phone === phone)) {
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-        email: "This email or phone number is already registered",
-      }));
-      return;
-    }
-
-    const newUser: User = { name, address, email, phone, password };
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers); // Store user data
-
-    // Save updated users to localStorage
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-
-    alert("Sign-up successful! You can now sign in.");
-    setIsSignUp(false);
-    setFormData({
-      name: "",
-      address: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-    });
-    setErrors({
-      name: "",
-      address: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      signIn: "",
-    });
+    setFormData((prevState) => ({ ...prevState, [name]: value }));
   };
 
   const handleSignIn = () => {
@@ -162,7 +80,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
       setErrors((prevErrors) => ({
         ...prevErrors,
         email: "Not a registered user",
-        signIn: "",
       }));
       return;
     }
@@ -175,50 +92,70 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
       return;
     }
 
+    localStorage.setItem("email", existingUser.email); // Store email on sign-in
     setIsLoggedIn(true);
-    alert("Signed in successfully!");
-
-    setFormData({
-      name: "",
-      address: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-    });
-
-    setErrors({
-      name: "",
-      address: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      signIn: "",
-    });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleGoogleSignIn = (credentialResponse: any) => {
-    const userInfo = {
-      email: credentialResponse?.credential?.email,
-      name: credentialResponse?.credential?.name,
+  const handleSignUp = () => {
+    if (formData.password !== formData.confirmPassword) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        confirmPassword: "Passwords do not match",
+      }));
+      return;
+    }
+
+    const newUser: User = {
+      name: formData.name,
+      address: formData.address,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
     };
 
-    // Save user name and email to localStorage
-    localStorage.setItem("googleUser", JSON.stringify(userInfo));
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-    const signInHistory = JSON.parse(
-      localStorage.getItem("signInHistory") || "[]"
-    );
-    signInHistory.push({
-      email: userInfo.email,
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem("signInHistory", JSON.stringify(signInHistory));
+    alert("Sign-up successful!");
+    setIsSignUp(false);
+  };
 
-    setIsLoggedIn(true);
-    alert("Signed in with Google!");
+  const handleGoogleSuccess = (response: CredentialResponse) => {
+    if (!response.credential) {
+      alert("Google authentication failed!");
+      return;
+    }
+
+    try {
+      // Decode JWT token with explicit type
+      const decodedToken: GoogleTokenPayload = jwtDecode<GoogleTokenPayload>(
+        response.credential
+      );
+
+      if (!decodedToken.email) {
+        alert("Failed to retrieve email from Google login.");
+        return;
+      }
+
+      const googleEmail = decodedToken.email;
+      const existingUser = users.find((user) => user.email === googleEmail);
+
+      if (existingUser) {
+        localStorage.setItem("email", existingUser.email);
+        setIsLoggedIn(true);
+      } else {
+        alert("No account found. Please sign up first.");
+        setIsSignUp(true);
+      }
+    } catch (error) {
+      console.error("Error decoding Google JWT:", error);
+      alert("Authentication error. Please try again.");
+    }
+  };
+
+  const handleGoogleError = () => {
+    alert("Google Login Failed!");
   };
 
   return (
@@ -227,7 +164,7 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        minHeight: "100vh", // Ensures full screen height
+        minHeight: "100vh",
         backgroundColor: "#f0f0f0",
       }}
     >
@@ -236,7 +173,7 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
         sx={{
           display: "flex",
           flexDirection: "column",
-          gap: "15px",
+          gap: "20px",
           maxWidth: "400px",
           margin: "auto",
           padding: "20px",
@@ -277,13 +214,13 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
             >
               Sign In
             </Button>
-            <Box sx={{ textAlign: "center", marginTop: "10px" }}>
-              <Typography variant="body2">OR</Typography>
-            </Box>
+            <Typography variant="body2" align="center">
+              OR
+            </Typography>
             <Box sx={{ display: "flex", justifyContent: "center" }}>
               <GoogleLogin
-                onSuccess={handleGoogleSignIn}
-                onError={() => console.log("Login Failed")}
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
               />
             </Box>
             <Button
@@ -302,8 +239,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              error={!!errors.name}
-              helperText={errors.name}
               fullWidth
               required
             />
@@ -312,8 +247,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               name="address"
               value={formData.address}
               onChange={handleChange}
-              error={!!errors.address}
-              helperText={errors.address}
               fullWidth
               required
             />
@@ -322,8 +255,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              error={!!errors.email}
-              helperText={errors.email}
               fullWidth
               required
             />
@@ -332,8 +263,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              error={!!errors.phone}
-              helperText={errors.phone}
               fullWidth
               required
             />
@@ -343,8 +272,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              error={!!errors.password}
-              helperText={errors.password}
               fullWidth
               required
             />
@@ -354,8 +281,6 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              error={!!errors.confirmPassword}
-              helperText={errors.confirmPassword}
               fullWidth
               required
             />
@@ -366,6 +291,14 @@ const UserForm: React.FC<UserFormProps> = ({ setIsLoggedIn }) => {
               fullWidth
             >
               Sign Up
+            </Button>
+            <Button
+              variant="text"
+              color="secondary"
+              onClick={() => setIsSignUp(false)}
+              fullWidth
+            >
+              Back to Sign In
             </Button>
           </>
         )}

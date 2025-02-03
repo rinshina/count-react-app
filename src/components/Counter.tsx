@@ -1,59 +1,57 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
+import { Box, Button, Typography } from "@mui/material";
 import { useSpring, animated } from "@react-spring/web";
-import { Button, Box, Typography } from "@mui/material";
 
-const Counter: React.FC = () => {
-  const [count, setCount] = useState<number>(
-    Number(localStorage.getItem("counter")) || 0
-  );
+const Counter = () => {
+  const [count, setCount] = useState(0);
 
-  // Save count to localStorage on change
-  useEffect(() => {
-    localStorage.setItem("counter", count.toString());
-  }, [count]);
-
-  // Background animation based on count
-  const bgColor = useSpring({
-    backgroundColor: `rgba(100, 149, 237, ${Math.min(count / 10, 1)})`, // Light blue with opacity
-    config: { tension: 150, friction: 20 },
+  // Background color effect: The higher the count, the darker the blue
+  const backgroundSpring = useSpring({
+    backgroundColor: `rgba(100, 100, 255, ${Math.min(count / 10, 1)})`,
+    config: { tension: 200, friction: 20 },
   });
+
+  const handleIncrement = () => {
+    setCount((prev) => prev + 1);
+  };
+
+  const handleDecrement = () => {
+    setCount((prev) => Math.max(0, prev - 1)); // Prevent going below 0
+  };
+
+  const handleReset = () => {
+    setCount(0);
+  };
 
   return (
     <animated.div
       style={{
-        ...bgColor,
-        height: "50vh",
+        ...backgroundSpring,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        height: "300px", // Increased height
+        width: "100%", // Slightly wider for better layout
+        borderRadius: "10px",
+        padding: "30px", // Increased padding for spacing
+        boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
+        textAlign: "center",
       }}
     >
-      <Box
-        sx={{ padding: 4, background: "white", borderRadius: 2, boxShadow: 3 }}
-      >
-        <Typography variant="h4">Counter: {count}</Typography>
-        <Box mt={2}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setCount(count + 1)}
-            sx={{ marginRight: 1 }}
-          >
-            +
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => setCount(count - 1)}
-            sx={{ marginRight: 1 }}
-          >
-            -
-          </Button>
-          <Button variant="contained" color="error" onClick={() => setCount(0)}>
-            Reset
-          </Button>
-        </Box>
+      <Typography variant="h4" sx={{ marginBottom: "20px" }}>
+        Counter: {count}
+      </Typography>
+      <Box display="flex" gap="15px" justifyContent="center">
+        <Button variant="contained" color="primary" onClick={handleIncrement}>
+          +
+        </Button>
+        <Button variant="contained" color="error" onClick={handleReset}>
+          Reset
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handleDecrement}>
+          -
+        </Button>
       </Box>
     </animated.div>
   );

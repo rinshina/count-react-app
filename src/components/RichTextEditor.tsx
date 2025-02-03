@@ -13,7 +13,7 @@ const RichTextEditor = () => {
 
   return (
     <Box
-      height="50vh" // Set height to 50% of viewport height
+      height="300px" // Set height to 50% of viewport height
       display="flex"
       flexDirection="column"
       p={5}
